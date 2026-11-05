@@ -97,8 +97,12 @@ function reset() {
 async function show(modeName) {
   mode = modeName;
   const revision = ++loadRevision;
-  ['panorama', 'top', 'rear'].forEach(id =>
-    element(id).setAttribute('aria-pressed', String(mode === id)));
+  const selectedScene = scenes[Number(room.value)]?.name || '';
+  const selectedButton = mode !== 'panorama' ? mode
+    : selectedScene.startsWith('室外_前院') ? 'frontTour'
+    : selectedScene.startsWith('室外_后院') ? 'rearTour' : 'panorama';
+  ['panorama', 'frontTour', 'rearTour', 'top', 'rear'].forEach(id =>
+    element(id).setAttribute('aria-pressed', String(selectedButton === id)));
   room.disabled = mode !== 'panorama' || !scenes.length;
   still.style.transform = '';
   canvas.hidden = true;
@@ -139,7 +143,7 @@ async function show(modeName) {
     if (revision !== loadRevision) return;
     still.src = 'lite/top.jpg';
     caption.textContent = '整屋俯视';
-    message.textContent = '当前全景未加载，请点「360° 全景」重试，或查看整屋俯视。';
+    message.textContent = '当前全景未加载，请重新选择全景，或查看整屋俯视。';
   }
 }
 
@@ -150,7 +154,7 @@ function changeZoom(factor) {
 }
 
 view.addEventListener('pointerdown', event => {
-  if (!source && (mode === 'panorama' || zoom === 1)) return;
+  if (!source && mode === 'panorama') return;
   view.setPointerCapture(event.pointerId);
   fingers.set(event.pointerId, [event.clientX, event.clientY]);
 });
@@ -196,4 +200,16 @@ window.addEventListener('resize', schedule);
 room.replaceChildren(...scenes.map((scene, index) => new Option(
   scene.floor + ' · ' + scene.name.replace(/^室外_|^[一二三]层_/, '').replace(/_门位修正_v32|_v34/g, ''),
   index)));
-show(scenes.length ? 'panorama' : 'top');
+function showNamedScene(prefix) {
+  const index = scenes.findIndex(scene => scene.name.startsWith(prefix));
+  if (index < 0) return;
+  room.value = index;
+  show('panorama');
+}
+element('panorama').onclick = () => showNamedScene('一层_');
+element('frontTour').onclick = () => showNamedScene('室外_前院');
+element('rearTour').onclick = () => showNamedScene('室外_后院');
+if (scenes.length) showNamedScene('室外_前院');
+else show('top');
+
+
